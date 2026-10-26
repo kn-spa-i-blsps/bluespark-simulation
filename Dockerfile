@@ -23,3 +23,4 @@ USER $USERNAME
 WORKDIR /home/$USERNAME/workspace
 
 RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+RUN echo "export GZ_SIM_RESOURCE_PATH=/home/ubuntu/workspace/models:$GZ_SIM_RESOURCE_PATH" >> ~/.bashrc
