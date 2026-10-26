@@ -16,7 +16,7 @@ elif [ -n "$STATUS" ]; then
     docker compose -f "$COMPOSE_FILE" start
 else
     echo "Creating and staring container..."
-    docker compose -f "$COMPOSE_FILE" up -d
+    docker compose -f "$COMPOSE_FILE" up -d --build
     
     # permissions to FUEL 
     docker compose -f "$COMPOSE_FILE" exec -u root gazebo_dev chown -R ubuntu:ubuntu /home/ubuntu/.gz
