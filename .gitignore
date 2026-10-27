@@ -1,0 +1,7 @@
+*.zip
+.vscode
+.idea
+.venv
+venv
+logs
+*.log
