@@ -21,7 +21,7 @@
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu">
         <render_engine>ogre</render_engine>
     </plugin>
-    
+
     <plugin filename="gz-sim-air-pressure-system" name="gz::sim::systems::AirPressure"/>
     <!-- Underwater Physics plugins -->
     <plugin
@@ -60,6 +60,13 @@
         <name>gate25</name>
         <uri>model://robosub25_gate</uri>
         <pose>0 0 -2 0 0 0</pose>
+    </include>
+
+    <!-- BlueROV2 -->
+    <include>
+        <name>bluerov2</name>
+        <uri>model://bluerov2</uri>
+        <pose>-3 0 -1 0 0 0</pose>
     </include>
 
     <!-- NOTE: Do not include pool waves rn as this is purely aesthetics -->

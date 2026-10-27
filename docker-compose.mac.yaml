@@ -1,0 +1,13 @@
+services:
+  gazebo_dev:
+    build: .
+    container_name: bs_sim
+    volumes:
+      - ./workspace:/home/ubuntu/workspace:rw
+      - gz_fuel_cache:/home/ubuntu/.gz
+    stdin_open: true
+    tty: true
+    command: bash
+
+volumes:
+  gz_fuel_cache:
