@@ -48,3 +48,8 @@ If you reference these assets in technical reports or papers, use the following 
 	url={https://fuel.gazebosim.org/1.0/monkescripts/models/robosub25_gate},
 }
 ```
+
+## BlueROV2 model
+
+Model, model generator and thrust test scripts are from [bluerov2_gz](https://github.com/clydemcqueen/bluerov2_gz) by **Clyde McQueen** (MIT License).
+Meshes by [Blue Robotics](https://bluerobotics.com/), obtained via GrabCAD.
