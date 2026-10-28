@@ -338,7 +338,7 @@
       <velocity_control>true</velocity_control>
       <use_angvel_cmd>@use_angvel_cmd</use_angvel_cmd>
     </plugin>
-    <!--
+    
     <plugin name="ArduPilotPlugin" filename="libArduPilotPlugin.so">
       <fdm_addr>127.0.0.1</fdm_addr>
       <fdm_port_in>9002</fdm_port_in>
@@ -346,7 +346,8 @@
       <lock_step>1</lock_step>
       <modelXYZToAirplaneXForwardZDown>0 0 0 @d180 0 0</modelXYZToAirplaneXForwardZDown>
 
-           to the ArduPilot world frame (NED)
+            <!-- Transform from the Gazebo world frame (ENU)
+           to the ArduPilot world frame (NED) -->
       <gazeboXYZToNED>0 0 0 @d180 0 @d90</gazeboXYZToNED>
 
       <imuName>imu_sensor</imuName>
@@ -407,6 +408,6 @@
       </control>
 
     </plugin>
-    -->
+  
   </model>
 </sdf>
