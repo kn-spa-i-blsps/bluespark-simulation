@@ -1,0 +1,6 @@
+# ArduSub SITL parameters for the BlueSpark simulation.
+# Accept RC override from MAVROS (sysid 1) as well as MAVProxy (sysid 255).
+# Without this, rc_override_node is ignored and the pilot-input failsafe
+# disarms the vehicle after 3 s.
+MAV_GCS_SYSID 1
+MAV_GCS_SYSID_HI 255
