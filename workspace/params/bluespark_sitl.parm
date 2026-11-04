@@ -1,0 +1,22 @@
+# ArduSub SITL parameters for the BlueSpark simulation.
+#
+# Loaded by scripts/run_ardusub.sh (sim_vehicle.py --add-param-file) on top of
+# ArduSub's defaults. Because run_ardusub.sh also passes -w, parameters set by
+# hand in MAVProxy (param set ...) are lost on the next start: put anything
+# that should persist in this file.
+# Format: one "NAME VALUE" pair per line, "#" starts a comment.
+#
+# --- Accept RC override from MAVROS -------------------------------------------
+# rc_override_node (bluespark_control) moves the vehicle by publishing
+# /mavros/rc/override, which MAVROS sends as MAVLink RC_CHANNELS_OVERRIDE.
+# ArduSub only accepts that message from its ground station, identified by the
+# sender's MAVLink system ID: by default only ID 255 (MAVProxy). MAVROS sends
+# with system ID 1, so without these lines:
+#   - the RC override from rc_override_node is silently ignored, and
+#   - the pilot-input failsafe (FS_PILOT_INPUT, timeout FS_PILOT_TIMEOUT = 3 s)
+#     disarms the vehicle 3 s after the ROS stack arms it.
+# The range 1..255 accepts both MAVROS and MAVProxy.
+# On the real vehicle the Pixhawk has its own parameters (set via
+# QGroundControl); this file only affects the simulation.
+MAV_GCS_SYSID 1
+MAV_GCS_SYSID_HI 255
