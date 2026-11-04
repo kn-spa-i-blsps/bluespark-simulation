@@ -338,20 +338,71 @@
       <velocity_control>true</velocity_control>
       <use_angvel_cmd>@use_angvel_cmd</use_angvel_cmd>
     </plugin>
-    
+
+    <!--
+      ArduPilotPlugin (from https://github.com/ArduPilot/ardupilot_gazebo)
+
+      Connects this model to ArduSub SITL, which plays the role of the Pixhawk
+      in simulation. Library: libArduPilotPlugin.so, found through
+      GZ_SIM_SYSTEM_PLUGIN_PATH (set in the Dockerfile).
+
+      Every simulation step the plugin:
+        1. Gazebo to ArduSub: reads imu_sensor, the model pose and velocity,
+           converts them to ArduPilot frames and sends them as JSON over UDP.
+           ArduSub derives the other sensors from this (e.g. the water pressure
+           that MAVROS publishes on /mavros/imu/static_pressure).
+        2. ArduSub to Gazebo: receives one PWM value per motor channel and
+           publishes a thrust command on each Thruster plugin's cmd_thrust topic
+           (the same topics scripts/forward.sh writes to by hand).
+
+      PWM to thrust, per channel:
+        thrust = ((pwm - servo_min) / (servo_max - servo_min) + offset) * multiplier
+      With the generated values (1100, 1900, -0.5, 100) this maps
+      PWM 1100..1900 to -50..+50 N, and PWM 1500 to 0 N.
+
+      Start Gazebo first, then ArduSub (scripts/run_ardusub.sh, which runs
+      sim_vehicle.py with model JSON). With lock_step, once ArduSub is
+      connected the simulation only advances when ArduSub answers, so if
+      ArduSub is stopped Gazebo waits for it instead of running on.
+
+      This file is a template: edit model.sdf.in, then regenerate model.sdf with
+      scripts/generate_model.py (values such as @servo_min come from configs.yaml).
+    -->
     <plugin name="ArduPilotPlugin" filename="libArduPilotPlugin.so">
+      <!-- Address and port the plugin listens on for ArduSub (JSON over UDP).
+           ArduSub SITL connects to 127.0.0.1:9002 by default. -->
       <fdm_addr>127.0.0.1</fdm_addr>
       <fdm_port_in>9002</fdm_port_in>
+      <!-- Missed ArduSub packets tolerated before the plugin reacts: with
+           lock_step it resends the last state, without it it resets the motors. -->
       <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+      <!-- 1 = Gazebo and ArduSub advance in lock step (one physics step per
+           ArduSub frame), so timing stays consistent even if the PC is slow. -->
       <lock_step>1</lock_step>
+
+      <!-- Transform from the Gazebo body frame (x-forward, y-left, z-up)
+           to the ArduPilot body frame (x-forward, y-right, z-down):
+           a 180 deg roll. -->
       <modelXYZToAirplaneXForwardZDown>0 0 0 @d180 0 0</modelXYZToAirplaneXForwardZDown>
 
-            <!-- Transform from the Gazebo world frame (ENU)
-           to the ArduPilot world frame (NED) -->
+      <!-- Transform from the Gazebo world frame (ENU: east, north, up)
+           to the ArduPilot world frame (NED: north, east, down):
+           180 deg roll and 90 deg yaw. If these are wrong the vehicle
+           looks upside down or rotated to ArduSub and the stabilisation
+           fights the simulation. -->
       <gazeboXYZToNED>0 0 0 @d180 0 @d90</gazeboXYZToNED>
 
+      <!-- IMU used for gyro and accelerometer data; must match the
+           sensor name on base_link above. -->
       <imuName>imu_sensor</imuName>
 
+      <!-- Motor channels. ArduSub channel N (0-based) is motor N+1 of the
+           "vectored" frame (FRAME_CONFIG = vectored, the BlueROV2 default):
+             channels 0-3: horizontal thrusters 1-4 (corners, at 45 deg)
+             channels 4-5: vertical thrusters 5-6
+           type COMMAND: the plugin does not drive the joint itself, it
+           publishes the thrust on cmd_topic and the Thruster plugin applies it.
+           cw/ccw multipliers account for the propeller spin direction. -->
       <control channel="0">
         <jointName>thruster1_joint</jointName>
         <servo_min>@servo_min</servo_min>
@@ -406,8 +457,7 @@
         <offset>@control_offset</offset>
         <multiplier>@cw_control_multiplier</multiplier>
       </control>
-
     </plugin>
-  
+
   </model>
 </sdf>
