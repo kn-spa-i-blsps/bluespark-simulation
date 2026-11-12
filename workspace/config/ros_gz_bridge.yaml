@@ -1,0 +1,26 @@
+# ros_gz_bridge configuration: Gazebo topics -> ROS 2 topics.
+#
+# Gazebo and ROS 2 each have their own topic system and do not see each other.
+# ros_gz_bridge subscribes to a Gazebo topic and republishes every message on a
+# ROS 2 topic. Started by scripts/run_bridge.sh.
+#
+# The ROS topic names match what the BlueSpark stack expects from the real
+# front camera (bluespark repo, front.launch.py: camera_node publishes
+# /front/camera/image_raw, vision_node subscribes to it), so vision_node works
+# with the simulation without any change.
+
+# Front camera image (sensor "front_camera" in models/bluerov2/model.sdf.in)
+- ros_topic_name: "/front/camera/image_raw"
+  gz_topic_name: "/bluerov2/front_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+# Front camera calibration (resolution, focal length). Gazebo publishes it
+# automatically next to the image. Not used by the stack yet, but standard
+# for any camera in ROS and needed to compute distances from pixels.
+- ros_topic_name: "/front/camera/camera_info"
+  gz_topic_name: "/bluerov2/front_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
