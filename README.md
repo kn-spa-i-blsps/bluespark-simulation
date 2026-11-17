@@ -14,12 +14,21 @@ After changing the `Dockerfile`, rebuild with `docker compose down && ./start_do
 2. Terminal 2 (container): `bash scripts/run_ardusub.sh`
    Starts ArduSub and MAVProxy; wait for the `MANUAL>` prompt.
    Quick check: `arm throttle`, `rc 5 1600` (forward), `rc 5 1500`, `disarm`.
-3. MAVLink is forwarded to `udp 127.0.0.1:14550`. To run the BlueSpark ROS 2
+3. Terminal 3 (container, optional): `bash scripts/run_underwater_camera.sh`
+   Starts the realistic underwater camera post-processing node (Gazebo Transport).
+   Subscribes to `/bluerov2/front_camera/image` and `/bluerov2/front_camera/depth_image`
+   and publishes realistic water-degraded imagery to `/bluerov2/front_camera/underwater/image`.
+4. MAVLink is forwarded to `udp 127.0.0.1:14550`. To run the BlueSpark ROS 2
    stack against the simulation (repo `bluespark`, branch `pytrees_mvp`,
    `docker-compose.dev.yml`):
 
    ```bash
    ros2 launch bluespark_bringup governer.launch.py fcu_url:=udp://:14550@ run_autonomy:=false
+   ```
+
+5. To bridge the underwater camera to ROS 2 topic `/bluerov2/front_camera/underwater/image_raw`:
+   ```bash
+   bash scripts/run_camera_bridge.sh
    ```
 
 Notes:
@@ -59,6 +68,25 @@ Notes:
   the `fix/vision-rgb8-encoding` change in the `bluespark` repo; with an older
   version red and blue are swapped.
 - ArduSub is not needed for the camera; both can run at the same time.
+
+## Realistic Underwater Camera Simulation
+
+Gazebo Harmonic does not natively simulate underwater light attenuation/turbidity in OGRE 2.
+To achieve realistic underwater imagery, the BlueROV2 uses an `rgbd_camera` sensor paired with
+a real-time Gazebo Transport post-processing node (`underwater_camera_proc`):
+
+- **Physical Model**: Jaffe-McGlamery / Beer-Lambert optical attenuation per RGB channel:
+  $$I_\lambda(d) = I_{0,\lambda} \cdot e^{-\eta_\lambda d} + B_\lambda \cdot (1 - e^{-\eta_\lambda d})$$
+  where red attenuates significantly faster than blue/green ($\eta_R \gg \eta_G > \eta_B$).
+- **Range Correction**: planar depth $z$ is converted to distance along each pixel's ray $d$.
+  Pixels with nothing within the camera's far clip (open water) get exactly the water colour $B$.
+- **Optical Degradations**: Forward scattering blur (distance-dependent softening) and sensor noise.
+- **Configuration**: Water parameters (attenuation coefficients, backscatter color, blur, noise) are in
+  `params/underwater_camera.yaml`. Camera geometry is read from `camera_info`, and the visible range
+  is the camera's `<clip>` in `model.sdf.in`; nothing camera-related is duplicated in the YAML.
+- **Build**: `run_underwater_camera.sh` rebuilds the node automatically when the source changed
+  (or build manually with `bash scripts/build_underwater_camera.sh`).
+
 ## Acknowledgements
 
 This project uses 3D underwater simulation models from Gazebo Fuel created by **Xinyuan**, **Ryan Summers** and *possibly* other authors(`monkescripts`) and BlueRov2 models from **Clyde McQueen** and **Blue Robotics**. 
