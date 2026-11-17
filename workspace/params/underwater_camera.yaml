@@ -1,0 +1,41 @@
+# =============================================================================
+# Underwater Camera Optical Degradation Parameters
+# Used by underwater_camera_proc (Gazebo Transport post-processing node)
+# =============================================================================
+
+topics:
+  input_rgb_topic: "/bluerov2/front_camera/image"
+  input_depth_topic: "/bluerov2/front_camera/depth_image"
+  input_camera_info_topic: "/bluerov2/front_camera/camera_info"
+  output_image_topic: "/bluerov2/front_camera/underwater/image"
+
+# Water optical properties based on Jaffe-McGlamery / Beer-Lambert model
+# Light attenuation coefficients (per meter): I(d) = I_0 * exp(-eta * d)
+# Red light attenuates much faster than green and blue in water.
+attenuation:
+  r: 0.45
+  g: 0.12
+  b: 0.07
+
+# Ambient water backscatter (veiling light) RGB values [0 - 255]
+# Gives water its distinctive underwater tint (bluish-cyan / greenish).
+backscatter:
+  r: 15.0
+  g: 50.0
+  b: 65.0
+
+# Camera geometry (field of view, image size) comes from camera_info, and the
+# visible range from the camera's <clip> in models/bluerov2/model.sdf.in:
+# anything beyond <far> is rendered as open water (pure backscatter colour).
+
+# Forward scattering (distance-dependent blur causing loss of fine details)
+blur:
+  enabled: true
+  max_kernel_size: 7
+  blend_factor: 0.35        # blur weight at full_blur_distance and beyond
+  full_blur_distance: 20.0  # [m], the weight grows linearly from 0 at the camera
+
+# Sensor / photon noise (higher perceived noise in attenuated dark regions)
+noise:
+  enabled: true
+  stddev: 2.5
