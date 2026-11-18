@@ -85,6 +85,35 @@ a real-time Gazebo Transport post-processing node (`underwater_camera_proc`):
 - **Build**: `run_underwater_camera.sh` rebuilds the node automatically when the source changed
   (or build manually with `bash scripts/build_underwater_camera.sh`).
 
+## Object detection dataset
+
+`worlds/dataset_pool.sdf` is a "photo studio": the pool, the labelled obstacles
+and a free camera (`models/dataset_camera`), without the drone. Gazebo's
+`boundingbox_camera` saves every frame with the 2D boxes of the labelled objects;
+a script moves the camera to random poses between frames.
+
+1. In one terminal (container), start the world **paused** (no `-r`):
+   `gz sim worlds/dataset_pool.sdf`
+2. In another terminal (container):
+   `python3 scripts/generate_dataset.py --count 500`
+   Frames go to `workspace/dataset/raw` (`images/*.png`, `boxes/*.csv`).
+3. Convert to a YOLO dataset (train/val split, `data.yaml`):
+   `python3 scripts/convert_to_yolo.py`
+   Result in `workspace/dataset/yolo`.
+
+Notes:
+- Classes: a Label system on each obstacle in `dataset_pool.sdf` sets its class
+  id; the names are `CLASS_NAMES` in `convert_to_yolo.py`. Gazebo merges all
+  labelled parts of one model into one box, so a part that needs its own class
+  must be a separate model.
+- Camera poses (distance, depth, aim) are set at the top of `generate_dataset.py`.
+  `--seed` repeats the same poses.
+- `workspace/dataset/raw` must be empty or missing before a run: Gazebo numbers
+  the saved frames from 0 after every start and would overwrite older ones.
+  `generate_dataset.py` stops if it finds frames there.
+- `workspace/dataset/` is in `.gitignore`.
+- Underwater effects (issue #4) are not applied yet.
+
 ## Acknowledgements
 
 This project uses 3D underwater simulation models from Gazebo Fuel created by **Xinyuan**, **Ryan Summers** and *possibly* other authors(`monkescripts`) and BlueRov2 models from **Clyde McQueen** and **Blue Robotics**. 

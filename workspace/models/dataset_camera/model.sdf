@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <!--
+    Camera "on a tripod" for dataset generation, without the drone.
+    scripts/generate_dataset.py moves it around by name ("dataset_camera").
+
+    It is a dynamic model only because Gazebo applies set_pose through physics;
+    with gravity off and no collision (so no buoyancy) it stays where it is put.
+  -->
+  <model name="dataset_camera">
+    <link name="link">
+      <gravity>false</gravity>
+      <inertial>
+        <mass>0.1</mass>
+        <inertia>
+          <ixx>1e-4</ixx>
+          <iyy>1e-4</iyy>
+          <izz>1e-4</izz>
+        </inertia>
+      </inertial>
+
+      <!--
+        boundingbox_camera renders an image and the 2D boxes of every visible
+        object that has a label (Label system, see worlds/dataset_pool.sdf).
+        With <save>, Gazebo itself writes each frame to disk:
+          <path>/images/image_0000001.png
+          <path>/boxes/boxes_0000001.csv   (label,x_center,y_center,width,height in px)
+      -->
+      <sensor name="dataset_camera" type="boundingbox_camera">
+        <always_on>1</always_on>
+        <!-- One frame per 0.1 s of sim time = every 100 physics steps of 1 ms.
+             generate_dataset.py steps exactly that much per photo (option steps). -->
+        <update_rate>10</update_rate>
+        <topic>/dataset_camera/boxes</topic>
+        <camera>
+          <!-- visible_2d: box around the visible part only (occlusion aware) -->
+          <box_type>visible_2d</box_type>
+          <!-- Same optics as the BlueROV2 front camera (models/bluerov2/model.sdf.in) -->
+          <horizontal_fov>1.396</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>20</far>
+          </clip>
+          <save enabled="true">
+            <path>/home/ubuntu/workspace/dataset/raw</path>
+          </save>
+        </camera>
+      </sensor>
+    </link>
+  </model>
+</sdf>
