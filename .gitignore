@@ -5,3 +5,6 @@
 venv
 logs
 *.log
+# Generated datasets (scripts/generate_dataset.py)
+workspace/dataset/
+__pycache__/
