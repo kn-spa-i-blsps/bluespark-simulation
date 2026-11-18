@@ -20,22 +20,24 @@
       </inertial>
 
       <!--
-        boundingbox_camera renders an image and the 2D boxes of every visible
-        object that has a label (Label system, see worlds/dataset_pool.sdf).
-        With <save>, Gazebo itself writes each frame to disk:
-          <path>/images/image_0000001.png
-          <path>/boxes/boxes_0000001.csv   (label,x_center,y_center,width,height in px)
+        Two sensors at the same place with the same optics as the BlueROV2 front
+        camera (models/bluerov2/model.sdf.in). Both render one frame per 0.1 s
+        of sim time (= 100 physics steps of 1 ms, what generate_dataset.py steps
+        per photo), so a frame of each has the same time stamp.
+        Gazebo renders a sensor only while something subscribes to it.
+
+        boundingbox_camera: 2D boxes of every visible object that has a label
+        (Label system, see worlds/dataset_pool.sdf) on /dataset_camera/boxes.
+        Its image (/dataset_camera/boxes_image) has the boxes drawn on it, so
+        the dataset takes the clean image from the rgbd camera instead.
       -->
       <sensor name="dataset_camera" type="boundingbox_camera">
         <always_on>1</always_on>
-        <!-- One frame per 0.1 s of sim time = every 100 physics steps of 1 ms.
-             generate_dataset.py steps exactly that much per photo (option steps). -->
         <update_rate>10</update_rate>
         <topic>/dataset_camera/boxes</topic>
         <camera>
           <!-- visible_2d: box around the visible part only (occlusion aware) -->
           <box_type>visible_2d</box_type>
-          <!-- Same optics as the BlueROV2 front camera (models/bluerov2/model.sdf.in) -->
           <horizontal_fov>1.396</horizontal_fov>
           <image>
             <width>640</width>
@@ -45,9 +47,37 @@
             <near>0.05</near>
             <far>20</far>
           </clip>
-          <save enabled="true">
-            <path>/home/ubuntu/workspace/dataset/raw</path>
-          </save>
+        </camera>
+      </sensor>
+
+      <!--
+        rgbd_camera: the clean image (/dataset_camera/rgbd/image) and, per pixel,
+        the distance (/dataset_camera/rgbd/depth_image). With the underwater
+        option of generate_dataset.py, the underwater camera post-processing
+        (underwater_camera_proc) turns them into an image with water
+        (/dataset_camera/underwater/image).
+      -->
+      <sensor name="dataset_rgbd" type="rgbd_camera">
+        <always_on>1</always_on>
+        <update_rate>10</update_rate>
+        <topic>/dataset_camera/rgbd</topic>
+        <camera>
+          <horizontal_fov>1.396</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>20</far>
+          </clip>
+          <depth_camera>
+            <clip>
+              <near>0.05</near>
+              <far>20</far>
+            </clip>
+          </depth_camera>
         </camera>
       </sensor>
     </link>

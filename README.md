@@ -87,32 +87,25 @@ a real-time Gazebo Transport post-processing node (`underwater_camera_proc`):
 
 ## Object detection dataset
 
-`worlds/dataset_pool.sdf` is a "photo studio": the pool, the labelled obstacles
-and a free camera (`models/dataset_camera`), without the drone. Gazebo's
-`boundingbox_camera` saves every frame with the 2D boxes of the labelled objects;
-a script moves the camera to random poses between frames.
+`worlds/dataset_pool.sdf` has the pool, the gate (labelled as class 0) and a free
+camera, without the drone. `scripts/generate_dataset.py` moves the camera to
+random poses and saves an image with the 2D boxes of the labelled objects for
+each pose; `scripts/convert_to_yolo.py` turns them into a YOLO dataset.
 
-1. In one terminal (container), start the world **paused** (no `-r`):
-   `gz sim worlds/dataset_pool.sdf`
-2. In another terminal (container):
-   `python3 scripts/generate_dataset.py --count 500`
-   Frames go to `workspace/dataset/raw` (`images/*.png`, `boxes/*.csv`).
-3. Convert to a YOLO dataset (train/val split, `data.yaml`):
-   `python3 scripts/convert_to_yolo.py`
+1. Terminal 1 (container): `gz sim worlds/dataset_pool.sdf` (paused, no `-r`)
+2. Terminal 2 (container): `python3 scripts/generate_dataset.py --count 500`
+   Saves to `workspace/dataset/raw`; every run adds to it.
+   `--underwater` adds the water of the drone's front camera (issue #4,
+   settings in `params/underwater_camera.yaml`).
+3. Terminal 2: `python3 scripts/convert_to_yolo.py`
    Result in `workspace/dataset/yolo`.
 
 Notes:
-- Classes: a Label system on each obstacle in `dataset_pool.sdf` sets its class
-  id; the names are `CLASS_NAMES` in `convert_to_yolo.py`. Gazebo merges all
-  labelled parts of one model into one box, so a part that needs its own class
-  must be a separate model.
-- Camera poses (distance, depth, aim) are set at the top of `generate_dataset.py`.
-  `--seed` repeats the same poses.
-- `workspace/dataset/raw` must be empty or missing before a run: Gazebo numbers
-  the saved frames from 0 after every start and would overwrite older ones.
-  `generate_dataset.py` stops if it finds frames there.
+- New obstacle: include it in `dataset_pool.sdf` with a Label system (next class
+  id) and add its name to `CLASS_NAMES` in `convert_to_yolo.py`. The camera aims
+  at the gate (`random_pose`), so keep it near the gate.
+- Camera pose ranges are set at the top of `generate_dataset.py`.
 - `workspace/dataset/` is in `.gitignore`.
-- Underwater effects (issue #4) are not applied yet.
 
 ## Acknowledgements
 
