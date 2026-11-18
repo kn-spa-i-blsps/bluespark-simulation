@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Turn the frames saved by Gazebo (scripts/generate_dataset.py) into a YOLO dataset.
+Turn the frames saved by scripts/generate_dataset.py into a YOLO dataset.
 
-Input, written by the dataset camera (models/dataset_camera/model.sdf):
-    dataset/raw/images/image_0000001.png
-    dataset/raw/boxes/boxes_0000001.csv    label,x_center,y_center,width,height (pixels)
+Input, written by scripts/generate_dataset.py:
+    dataset/raw/images/image_0000000.png
+    dataset/raw/boxes/boxes_0000000.csv    label,x_center,y_center,width,height (pixels)
 Output:
-    dataset/yolo/images/{train,val}/image_0000001.png
-    dataset/yolo/labels/{train,val}/image_0000001.txt   class x_center y_center width height (0-1)
+    dataset/yolo/images/{train,val}/image_0000000.png
+    dataset/yolo/labels/{train,val}/image_0000000.txt   class x_center y_center width height (0-1)
     dataset/yolo/data.yaml                               paths and class names for training
 
 Usage, in the container:  python3 scripts/convert_to_yolo.py
@@ -74,7 +74,7 @@ def main():
         split = "val" if i < n_val else "train"
         boxes_csv = raw / "boxes" / image.name.replace("image_", "boxes_").replace(".png", ".csv")
         if not boxes_csv.exists():
-            continue  # image saved without its boxes (Gazebo stopped in between)
+            continue  # image saved without its boxes (generate_dataset.py stopped in between)
         lines = yolo_lines(boxes_csv, *png_size(image), args.min_px)
 
         shutil.copy2(image, out / "images" / split / image.name)
