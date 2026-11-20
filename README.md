@@ -31,6 +31,28 @@ Notes:
   `configs.yaml`, run (in the container):
   `python3 scripts/generate_model.py models/bluerov2/model.sdf.in models/bluerov2/model.sdf models/bluerov2/configs.yaml`
 
+## Object detection dataset
+
+`worlds/dataset_pool.sdf` has the pool, the gate (labelled as class 0) and a free
+camera, without the drone. `scripts/generate_dataset.py` moves the camera to
+random poses and saves an image with the 2D boxes of the labelled objects for
+each pose; `scripts/convert_to_yolo.py` turns them into a YOLO dataset.
+
+1. Terminal 1 (container): `gz sim worlds/dataset_pool.sdf` (paused, no `-r`)
+2. Terminal 2 (container): `python3 scripts/generate_dataset.py --count 500`
+   Saves to `workspace/dataset/raw`; every run adds to it.
+   `--underwater` adds the water of the drone's front camera (issue #4,
+   settings in `params/underwater_camera.yaml`).
+3. Terminal 2: `python3 scripts/convert_to_yolo.py`
+   Result in `workspace/dataset/yolo`.
+
+Notes:
+- New obstacle: include it in `dataset_pool.sdf` with a Label system (next class
+  id) and add its name to `CLASS_NAMES` in `convert_to_yolo.py`. The camera aims
+  at the gate (`random_pose`), so keep it near the gate.
+- Camera pose ranges are set at the top of `generate_dataset.py`.
+- `workspace/dataset/` is in `.gitignore`.
+
 ## Acknowledgements
 
 This project uses 3D underwater simulation models from Gazebo Fuel created by **Xinyuan**, **Ryan Summers** and *possibly* other authors(`monkescripts`) and BlueRov2 models from **Clyde McQueen** and **Blue Robotics**. 

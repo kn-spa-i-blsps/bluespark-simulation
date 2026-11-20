@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<!--
+  "Photo studio" for object detection datasets: the pool with labelled obstacles
+  and a free camera (models/dataset_camera), no drone, ArduSub or ROS needed.
+
+  Start it PAUSED (no -r), scripts/generate_dataset.py runs the simulation step
+  by step so that every saved frame is taken after the camera has moved:
+    gz sim worlds/dataset_pool.sdf
+
+  Object classes: each obstacle model gets a Label system with a number. The
+  number is the class id in the dataset; the class names are listed in
+  scripts/convert_to_yolo.py (CLASS_NAMES). Labels are 0-254 (255 = background).
+  Note: Gazebo merges all labelled parts of one model into one box, so a part
+  that needs its own class must be a separate model.
+-->
+<sdf version="1.8">
+  <world name="dataset_pool">
+    <physics name="1ms" type="dart">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <!-- Provides the set_pose service used to move the camera -->
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <!-- Renders the camera; boundingbox_camera needs ogre2 -->
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Same light as worlds/bs_pool.sdf -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <include>
+      <name>pool_structure</name>
+      <uri>model://pool</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <!-- Obstacles. Pose must match GATE_CENTER in scripts/generate_dataset.py. -->
+    <include>
+      <name>gate25</name>
+      <uri>model://robosub25_gate</uri>
+      <pose>0 0 -2 0 0 0</pose>
+      <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+        <label>0</label>  <!-- class 0: gate -->
+      </plugin>
+    </include>
+
+    <!-- Moved by scripts/generate_dataset.py; this is only the start pose -->
+    <include>
+      <name>dataset_camera</name>
+      <uri>model://dataset_camera</uri>
+      <pose>0 -4 -1 0 0 1.5708</pose>
+    </include>
+  </world>
+</sdf>
