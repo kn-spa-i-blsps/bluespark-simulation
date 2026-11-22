@@ -39,18 +39,23 @@ Gazebo topics, which ROS 2 does not see. `scripts/run_bridge.sh` starts
 the ROS 2 topics the BlueSpark stack uses for the real front camera, so
 `vision_node` can run on the simulated image without changes:
 
-| Gazebo topic                         | ROS 2 topic                 |
-|--------------------------------------|-----------------------------|
-| `/bluerov2/front_camera/image`       | `/front/camera/image_raw`   |
-| `/bluerov2/front_camera/camera_info` | `/front/camera/camera_info` |
+| Gazebo topic                              | ROS 2 topic                 |
+|-------------------------------------------|-----------------------------|
+| `/bluerov2/front_camera/underwater/image` | `/front/camera/image_raw`   |
+| `/bluerov2/front_camera/camera_info`      | `/front/camera/camera_info` |
 
 1. In one terminal (container): `gz sim -r worlds/bs_pool.sdf`
-2. In another terminal (container): `bash scripts/run_bridge.sh`
-3. Check, in a third terminal (container):
+2. In another terminal (container): `bash scripts/run_underwater_camera.sh`
+3. In another terminal (container): `bash scripts/run_bridge.sh`
+4. Check, in a fourth terminal (container):
    `export ROS_DOMAIN_ID=42 && ros2 topic hz /front/camera/image_raw`
    (about 30 Hz).
 
 Notes:
+- The bridged image is the processed one published by `underwater_camera_proc`
+  (see "Realistic Underwater Camera Simulation" below). Without
+  `scripts/run_underwater_camera.sh` running, `/front/camera/image_raw`
+  receives nothing.
 - The bridge publishes in ROS domain 42 (`ROS_DOMAIN_ID`), the same as the
   BlueSpark stack; programs in different domains do not see each other.
 - The topic list is in `workspace/config/ros_gz_bridge.yaml`.
@@ -59,6 +64,25 @@ Notes:
   the `fix/vision-rgb8-encoding` change in the `bluespark` repo; with an older
   version red and blue are swapped.
 - ArduSub is not needed for the camera; both can run at the same time.
+
+## Realistic Underwater Camera Simulation
+
+Gazebo Harmonic does not natively simulate underwater light attenuation/turbidity in OGRE 2.
+To achieve realistic underwater imagery, the BlueROV2 uses an `rgbd_camera` sensor paired with
+a real-time Gazebo Transport post-processing node (`underwater_camera_proc`):
+
+- **Physical Model**: Jaffe-McGlamery / Beer-Lambert optical attenuation per RGB channel:
+  $$I_\lambda(d) = I_{0,\lambda} \cdot e^{-\eta_\lambda d} + B_\lambda \cdot (1 - e^{-\eta_\lambda d})$$
+  where red attenuates significantly faster than blue/green ($\eta_R \gg \eta_G > \eta_B$).
+- **Range Correction**: planar depth $z$ is converted to distance along each pixel's ray $d$.
+  Pixels with nothing within the camera's far clip (open water) get exactly the water colour $B$.
+- **Optical Degradations**: Forward scattering blur (distance-dependent softening) and sensor noise.
+- **Configuration**: Water parameters (attenuation coefficients, backscatter color, blur, noise) are in
+  `params/underwater_camera.yaml`. Camera geometry is read from `camera_info`, and the visible range
+  is the camera's `<clip>` in `model.sdf.in`; nothing camera-related is duplicated in the YAML.
+- **Build**: `run_underwater_camera.sh` rebuilds the node automatically when the source changed
+  (or build manually with `bash scripts/build_underwater_camera.sh`).
+
 ## Acknowledgements
 
 This project uses 3D underwater simulation models from Gazebo Fuel created by **Xinyuan**, **Ryan Summers** and *possibly* other authors(`monkescripts`) and BlueRov2 models from **Clyde McQueen** and **Blue Robotics**. 

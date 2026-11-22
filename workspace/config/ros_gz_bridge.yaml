@@ -9,9 +9,11 @@
 # /front/camera/image_raw, vision_node subscribes to it), so vision_node works
 # with the simulation without any change.
 
-# Front camera image (sensor "front_camera" in models/bluerov2/model.sdf.in)
+# Front camera image after underwater post-processing: published by
+# underwater_camera_proc (scripts/run_underwater_camera.sh) from the raw image
+# and depth of sensor "front_camera" in models/bluerov2/model.sdf.in.
 - ros_topic_name: "/front/camera/image_raw"
-  gz_topic_name: "/bluerov2/front_camera/image"
+  gz_topic_name: "/bluerov2/front_camera/underwater/image"
   ros_type_name: "sensor_msgs/msg/Image"
   gz_type_name: "gz.msgs.Image"
   direction: GZ_TO_ROS
