@@ -31,6 +31,34 @@ Notes:
   `configs.yaml`, run (in the container):
   `python3 scripts/generate_model.py models/bluerov2/model.sdf.in models/bluerov2/model.sdf models/bluerov2/configs.yaml`
 
+## Front camera in ROS 2
+
+The BlueROV2 front camera (sensor `front_camera` in the model) publishes on
+Gazebo topics, which ROS 2 does not see. `scripts/run_bridge.sh` starts
+`ros_gz_bridge` (installed with `ros-jazzy-ros-gz`), which republishes them on
+the ROS 2 topics the BlueSpark stack uses for the real front camera, so
+`vision_node` can run on the simulated image without changes:
+
+| Gazebo topic                         | ROS 2 topic                 |
+|--------------------------------------|-----------------------------|
+| `/bluerov2/front_camera/image`       | `/front/camera/image_raw`   |
+| `/bluerov2/front_camera/camera_info` | `/front/camera/camera_info` |
+
+1. In one terminal (container): `gz sim -r worlds/bs_pool.sdf`
+2. In another terminal (container): `bash scripts/run_bridge.sh`
+3. Check, in a third terminal (container):
+   `export ROS_DOMAIN_ID=42 && ros2 topic hz /front/camera/image_raw`
+   (about 30 Hz).
+
+Notes:
+- The bridge publishes in ROS domain 42 (`ROS_DOMAIN_ID`), the same as the
+  BlueSpark stack; programs in different domains do not see each other.
+- The topic list is in `workspace/config/ros_gz_bridge.yaml`.
+- Gazebo publishes `rgb8` (it cannot produce BGR), while the real camera
+  publishes `bgr8`. `vision_node` converts based on the image encoding since
+  the `fix/vision-rgb8-encoding` change in the `bluespark` repo; with an older
+  version red and blue are swapped.
+- ArduSub is not needed for the camera; both can run at the same time.
 ## Acknowledgements
 
 This project uses 3D underwater simulation models from Gazebo Fuel created by **Xinyuan**, **Ryan Summers** and *possibly* other authors(`monkescripts`) and BlueRov2 models from **Clyde McQueen** and **Blue Robotics**. 
