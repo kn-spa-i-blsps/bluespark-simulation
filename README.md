@@ -14,21 +14,12 @@ After changing the `Dockerfile`, rebuild with `docker compose down && ./start_do
 2. Terminal 2 (container): `bash scripts/run_ardusub.sh`
    Starts ArduSub and MAVProxy; wait for the `MANUAL>` prompt.
    Quick check: `arm throttle`, `rc 5 1600` (forward), `rc 5 1500`, `disarm`.
-3. Terminal 3 (container, optional): `bash scripts/run_underwater_camera.sh`
-   Starts the realistic underwater camera post-processing node (Gazebo Transport).
-   Subscribes to `/bluerov2/front_camera/image` and `/bluerov2/front_camera/depth_image`
-   and publishes realistic water-degraded imagery to `/bluerov2/front_camera/underwater/image`.
-4. MAVLink is forwarded to `udp 127.0.0.1:14550`. To run the BlueSpark ROS 2
+3. MAVLink is forwarded to `udp 127.0.0.1:14550`. To run the BlueSpark ROS 2
    stack against the simulation (repo `bluespark`, branch `pytrees_mvp`,
    `docker-compose.dev.yml`):
 
    ```bash
    ros2 launch bluespark_bringup governer.launch.py fcu_url:=udp://:14550@ run_autonomy:=false
-   ```
-
-5. To bridge the underwater camera to ROS 2 topic `/bluerov2/front_camera/underwater/image_raw`:
-   ```bash
-   bash scripts/run_camera_bridge.sh
    ```
 
 Notes:
@@ -48,18 +39,23 @@ Gazebo topics, which ROS 2 does not see. `scripts/run_bridge.sh` starts
 the ROS 2 topics the BlueSpark stack uses for the real front camera, so
 `vision_node` can run on the simulated image without changes:
 
-| Gazebo topic                         | ROS 2 topic                 |
-|--------------------------------------|-----------------------------|
-| `/bluerov2/front_camera/image`       | `/front/camera/image_raw`   |
-| `/bluerov2/front_camera/camera_info` | `/front/camera/camera_info` |
+| Gazebo topic                              | ROS 2 topic                 |
+|-------------------------------------------|-----------------------------|
+| `/bluerov2/front_camera/underwater/image` | `/front/camera/image_raw`   |
+| `/bluerov2/front_camera/camera_info`      | `/front/camera/camera_info` |
 
 1. In one terminal (container): `gz sim -r worlds/bs_pool.sdf`
-2. In another terminal (container): `bash scripts/run_bridge.sh`
-3. Check, in a third terminal (container):
+2. In another terminal (container): `bash scripts/run_underwater_camera.sh`
+3. In another terminal (container): `bash scripts/run_bridge.sh`
+4. Check, in a fourth terminal (container):
    `export ROS_DOMAIN_ID=42 && ros2 topic hz /front/camera/image_raw`
    (about 30 Hz).
 
 Notes:
+- The bridged image is the processed one published by `underwater_camera_proc`
+  (see "Realistic Underwater Camera Simulation" below). Without
+  `scripts/run_underwater_camera.sh` running, `/front/camera/image_raw`
+  receives nothing.
 - The bridge publishes in ROS domain 42 (`ROS_DOMAIN_ID`), the same as the
   BlueSpark stack; programs in different domains do not see each other.
 - The topic list is in `workspace/config/ros_gz_bridge.yaml`.
