@@ -10,7 +10,9 @@ and receives the simulated IMU and pose (JSON over UDP, port 9002).
 The first image build takes 15-30 min because ArduSub is compiled from source.
 After changing the `Dockerfile`, rebuild with `docker compose down && ./start_docker.sh`.
 
-1. Terminal 1 (container): `gz sim -r worlds/bs_pool.sdf`
+1. Terminal 1 (container): `bash scripts/run_gazebo.sh`
+   (= `gz sim -r worlds/bs_pool.sdf` with the environment set; another world:
+   `bash scripts/run_gazebo.sh worlds/<x>.sdf`, extra arguments go to `gz sim`)
 2. Terminal 2 (container): `bash scripts/run_ardusub.sh`
    Starts ArduSub and MAVProxy; wait for the `MANUAL>` prompt.
    Quick check: `arm throttle`, `rc 5 1600` (forward), `rc 5 1500`, `disarm`.
@@ -44,7 +46,7 @@ the ROS 2 topics the BlueSpark stack uses for the real front camera, so
 | `/bluerov2/front_camera/underwater/image` | `/front/camera/image_raw`   |
 | `/bluerov2/front_camera/camera_info`      | `/front/camera/camera_info` |
 
-1. In one terminal (container): `gz sim -r worlds/bs_pool.sdf`
+1. In one terminal (container): `bash scripts/run_gazebo.sh`
 2. In another terminal (container): `bash scripts/run_underwater_camera.sh`
 3. In another terminal (container): `bash scripts/run_bridge.sh`
 4. Check, in a fourth terminal (container):
