@@ -7,7 +7,7 @@
 # through ArduPilotPlugin (JSON over UDP port 9002) and sends motor PWM back.
 #
 # Usage, inside the bs_sim container:
-#   1. Terminal 1: gz sim -r worlds/bs_pool.sdf      (Gazebo must run first)
+#   1. Terminal 1: bash scripts/run_gazebo.sh     (Gazebo must run first)
 #   2. Terminal 2: bash scripts/run_ardusub.sh
 #   3. Wait for the MAVProxy prompt "MANUAL>". Quick check:
 #        arm throttle     arm the vehicle
