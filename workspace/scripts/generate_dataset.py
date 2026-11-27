@@ -115,8 +115,10 @@ def stamp(msg):
 class Camera:
     """Moves the dataset camera and collects the boxes and images it publishes."""
 
-    def __init__(self, image_topic):
+    def __init__(self, image_topic, helper=None):
+        """helper: process the images come through (underwater post-processing), or None."""
         self.node = Node()
+        self.helper = helper
         self.lock = threading.Lock()
         self.boxes = {}   # time stamp -> [(label, x_min, y_min, x_max, y_max)]
         self.images = {}  # time stamp -> image (BGR, as OpenCV saves it)
@@ -177,6 +179,9 @@ class Camera:
             # getting ready. The camera pose stays the same.
             step_deadline = min(time.time() + retry, deadline)
             while time.time() < step_deadline:
+                if self.helper is not None and self.helper.poll() is not None:
+                    raise SystemExit("The underwater camera post-processing stopped (exit code "
+                                     f"{self.helper.returncode}), see its error above.")
                 with self.lock:
                     done = [s for s in self.boxes if s > after and s in self.images]
                     if done:
@@ -194,7 +199,8 @@ def start_underwater():
     """Start the underwater post-processing on the dataset camera.
 
     Uses the water of params/underwater_camera.yaml (the drone's front camera)
-    with the topics switched to the dataset camera.
+    with the topics switched to the dataset camera, in a temporary config file.
+    Returns (process, path of that file); stop_underwater() stops and removes them.
     """
     missing = [p for p in (UNDERWATER_BUILD, UNDERWATER_RUN, UNDERWATER_CONFIG) if not p.exists()]
     if missing:
@@ -207,12 +213,30 @@ def start_underwater():
         "input_camera_info_topic": f"{RGBD_TOPIC}/camera_info",
         "output_image_topic": UNDERWATER_TOPIC,
     })
+    print("Building the underwater camera post-processing...")
+    subprocess.run(["bash", str(UNDERWATER_BUILD)], check=True, stdout=subprocess.DEVNULL)
     with tempfile.NamedTemporaryFile("w", prefix="dataset_underwater_", suffix=".yaml",
                                      delete=False) as f:
         yaml.safe_dump(config, f)
-    print("Building the underwater camera post-processing...")
-    subprocess.run(["bash", str(UNDERWATER_BUILD)], check=True, stdout=subprocess.DEVNULL)
-    return subprocess.Popen(["bash", str(UNDERWATER_RUN), f.name], stdout=subprocess.DEVNULL)
+    config_path = Path(f.name)
+    try:
+        # Its errors go to stderr, so they show in this terminal.
+        process = subprocess.Popen(["bash", str(UNDERWATER_RUN), str(config_path)],
+                                   stdout=subprocess.DEVNULL)
+    except OSError:
+        config_path.unlink()
+        raise
+    return process, config_path
+
+
+def stop_underwater(process, config_path):
+    """Stop the underwater post-processing and remove its temporary config file."""
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+    config_path.unlink(missing_ok=True)
 
 
 def next_number():
@@ -247,9 +271,9 @@ def main():
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
-    underwater = start_underwater() if args.underwater else None
+    underwater, config_path = start_underwater() if args.underwater else (None, None)
     try:
-        camera = Camera(UNDERWATER_TOPIC if underwater else f"{RGBD_TOPIC}/image")
+        camera = Camera(UNDERWATER_TOPIC if underwater else f"{RGBD_TOPIC}/image", underwater)
         first = next_number()
         for i in range(args.count):
             camera.move(*random_pose(rng))
@@ -257,7 +281,7 @@ def main():
             print(f"\r{i + 1}/{args.count} photos", end="", flush=True)
     finally:
         if underwater:
-            underwater.terminate()
+            stop_underwater(underwater, config_path)
     print(f"\nSaved in {RAW_DIR}. Next: python3 scripts/convert_to_yolo.py")
 
 
