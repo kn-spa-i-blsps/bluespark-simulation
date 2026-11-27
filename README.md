@@ -92,18 +92,23 @@ camera, without the drone. `scripts/generate_dataset.py` moves the camera to
 random poses and saves an image with the 2D boxes of the labelled objects for
 each pose; `scripts/convert_to_yolo.py` turns them into a YOLO dataset.
 
-1. Terminal 1 (container): `gz sim worlds/dataset_pool.sdf` (paused, no `-r`)
+1. Terminal 1 (container): `gz sim worlds/dataset_pool.sdf`
+   The world must start paused, so not with `scripts/run_gazebo.sh` (it always
+   adds `-r`); the script steps the simulation itself, one frame per photo.
 2. Terminal 2 (container): `python3 scripts/generate_dataset.py --count 500`
    Saves to `workspace/dataset/raw`; every run adds to it.
-   `--underwater` adds the water of the drone's front camera (issue #4,
-   settings in `params/underwater_camera.yaml`).
+   `--underwater` applies the same water as the drone's front camera (see
+   "Realistic Underwater Camera Simulation" above, settings in
+   `params/underwater_camera.yaml`). The script builds and starts
+   `underwater_camera_proc` for the dataset camera itself, so do not run
+   `scripts/run_underwater_camera.sh` for it.
 3. Terminal 2: `python3 scripts/convert_to_yolo.py`
    Result in `workspace/dataset/yolo`.
 
 Notes:
 - New obstacle: include it in `dataset_pool.sdf` with a Label system (next class
-  id) and add its name to `CLASS_NAMES` in `convert_to_yolo.py`. The camera aims
-  at the gate (`random_pose`), so keep it near the gate.
+  id) and add its name to `CLASS_NAMES` in `convert_to_yolo.py`. For now the
+  camera aims only at the gate (`random_pose`), so keep new obstacles near it.
 - Camera pose ranges are set at the top of `generate_dataset.py`.
 - `workspace/dataset/` is in `.gitignore`.
 
