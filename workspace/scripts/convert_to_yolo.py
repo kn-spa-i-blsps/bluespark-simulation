@@ -32,26 +32,24 @@ def png_size(path):
         return struct.unpack(">II", f.read(24)[16:24])
 
 
-def yolo_lines(boxes_csv, width, height, min_px):
-    """YOLO label lines for one frame. Boxes smaller than min_px are dropped."""
-    lines = []
+def read_boxes(boxes_csv):
+    """Boxes of one frame: [(label, x_center, y_center, width, height)], in pixels."""
     with open(boxes_csv) as f:
-        for box in csv.DictReader(f):
-            label = int(box["label"])
-            w, h = float(box["width"]), float(box["height"])
-            if label >= len(CLASS_NAMES) or w < min_px or h < min_px:
-                continue
-            # Pixels -> fractions of the image size, as YOLO expects.
-            lines.append(f"{label} {float(box['x_center']) / width:.6f} "
-                         f"{float(box['y_center']) / height:.6f} "
-                         f"{w / width:.6f} {h / height:.6f}")
-    return lines
+        return [(int(b["label"]), float(b["x_center"]), float(b["y_center"]),
+                 float(b["width"]), float(b["height"])) for b in csv.DictReader(f)]
+
+
+def yolo_line(box, width, height):
+    """YOLO label line of one box: pixels -> fractions of the image size."""
+    label, x, y, w, h = box
+    return f"{label} {x / width:.6f} {y / height:.6f} {w / width:.6f} {h / height:.6f}"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     parser.add_argument("--val", type=float, default=0.2, help="share of photos for validation")
-    parser.add_argument("--min-px", type=float, default=4, help="drop boxes smaller than this")
+    parser.add_argument("--min-px", type=float, default=4,
+                        help="skip images with a box smaller than this in both width and height")
     parser.add_argument("--seed", type=int, default=0, help="seed of the train/val split")
     args = parser.parse_args()
 
@@ -59,6 +57,23 @@ def main():
     images = sorted((raw / "images").glob("image_*.png"))
     if not images:
         raise SystemExit(f"No images in {raw / 'images'}. Run generate_dataset.py first.")
+
+    frames, no_boxes = [], 0
+    for image in images:
+        boxes_csv = raw / "boxes" / image.name.replace("image_", "boxes_").replace(".png", ".csv")
+        if not boxes_csv.exists():
+            no_boxes += 1  # image saved without its boxes (generate_dataset.py stopped in between)
+            continue
+        frames.append((image, read_boxes(boxes_csv)))
+
+    # A label without a class name cannot go into the labels, but the object is
+    # in the images: YOLO would learn it as background. Stop before writing anything.
+    unknown = sorted({box[0] for _, boxes in frames for box in boxes
+                      if not 0 <= box[0] < len(CLASS_NAMES)})
+    if unknown:
+        raise SystemExit(f"Labels {unknown} have no class name. Add them to CLASS_NAMES in "
+                         "scripts/convert_to_yolo.py (index = label in worlds/dataset_pool.sdf).")
+
     if out.exists():
         shutil.rmtree(out)  # always rebuild from raw, so no stale files stay behind
 
@@ -66,16 +81,22 @@ def main():
         for split in ("train", "val"):
             (out / kind / split).mkdir(parents=True)
 
-    random.Random(args.seed).shuffle(images)
-    n_val = round(len(images) * args.val)
-    counts = {"train": 0, "val": 0, "boxes": 0}
+    random.Random(args.seed).shuffle(frames)
+    n_val = round(len(frames) * args.val)
+    counts = {"train": 0, "val": 0, "boxes": 0, "small": 0}
 
-    for i, image in enumerate(images):
+    for i, (image, boxes) in enumerate(frames):
+        # A box too small to learn from (an object far away or almost all
+        # hidden) is not just left out: the object is still in the image, and
+        # without its label YOLO would learn it as background. So the whole
+        # image is skipped. Only boxes small in both directions count: a thin
+        # box, like a gate post at the image border, is a clearly visible object.
+        if any(w < args.min_px and h < args.min_px for _, _, _, w, h in boxes):
+            counts["small"] += 1
+            continue
         split = "val" if i < n_val else "train"
-        boxes_csv = raw / "boxes" / image.name.replace("image_", "boxes_").replace(".png", ".csv")
-        if not boxes_csv.exists():
-            continue  # image saved without its boxes (generate_dataset.py stopped in between)
-        lines = yolo_lines(boxes_csv, *png_size(image), args.min_px)
+        size = png_size(image)
+        lines = [yolo_line(box, *size) for box in boxes]
 
         shutil.copy2(image, out / "images" / split / image.name)
         # An image without objects gets an empty label file: a negative example.
@@ -89,6 +110,11 @@ def main():
         f"names:\n" + "".join(f"  {i}: {n}\n" for i, n in enumerate(CLASS_NAMES)))
     print(f"{counts['train']} train + {counts['val']} val images, "
           f"{counts['boxes']} boxes -> {out}")
+    if counts["small"]:
+        print(f"Skipped {counts['small']} images with a box under {args.min_px:g} px "
+              "(--min-px).")
+    if no_boxes:
+        print(f"Skipped {no_boxes} images without a boxes file.")
 
 
 if __name__ == "__main__":
