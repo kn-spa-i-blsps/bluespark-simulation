@@ -8,3 +8,6 @@ logs
 workspace/bin/
 workspace/build/
 skills/**
+# Generated datasets (scripts/generate_dataset.py)
+workspace/dataset/
+__pycache__/
